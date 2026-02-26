@@ -4,13 +4,14 @@ package domen
 type CommandType string
 
 const (
-	CmdCreate   CommandType = "создание"
-	CmdDelete   CommandType = "удаление"
-	CmdEdit     CommandType = "внесение изменений"
-	CmdCopy     CommandType = "копирование"
-	CmdMove     CommandType = "перемещение"
-	CmdRead     CommandType = "чтение"
-	CmdAddLines CommandType = "добавление строк"
+	CmdCreate      CommandType = "создание"
+	CmdDelete      CommandType = "удаление"
+	CmdEdit        CommandType = "внесение изменений"
+	CmdCopy        CommandType = "копирование"
+	CmdMove        CommandType = "перемещение"
+	CmdRead        CommandType = "чтение"
+	CmdAddLines    CommandType = "добавление строк"
+	CmdDeleteLines CommandType = "удаление строк"
 )
 
 // Command представляет одну атомарную команду для модификации файловой системы.
