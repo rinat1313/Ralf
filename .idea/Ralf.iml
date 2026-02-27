@@ -6,5 +6,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="llm" />
+    <orderEntry type="module" module-name="Создание Ralf" />
   </component>
 </module>

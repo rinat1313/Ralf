@@ -30,6 +30,8 @@ func ExecuteCommand(cmd domen.Command) (string, error) {
 		return "", executeMove(cmd)
 	case domen.CmdRead:
 		return executeRead(cmd)
+	case domen.CmdCompileCode:
+		return executeCompile(cmd)
 	default:
 		return "", fmt.Errorf("неизвестный тип команды: %s", cmd.Type)
 	}
@@ -209,4 +211,11 @@ func executeRead(cmd domen.Command) (string, error) {
 		return "", fmt.Errorf("не удалось прочитать файл %s: %w", cmd.Path, err)
 	}
 	return string(data), nil
+}
+
+func executeCompile(cmd domen.Command) (string, error) {
+	if !fileExists(cmd.Path) {
+		return "", fmt.Errorf("файл не существует: %s", cmd.Path)
+	}
+	return Compile(cmd.Path)
 }

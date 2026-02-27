@@ -12,6 +12,7 @@ const (
 	CmdRead        CommandType = "чтение"
 	CmdAddLines    CommandType = "добавление строк"
 	CmdDeleteLines CommandType = "удаление строк"
+	CmdCompileCode CommandType = "компиляция"
 )
 
 // Command представляет одну атомарную команду для модификации файловой системы.

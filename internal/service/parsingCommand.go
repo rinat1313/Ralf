@@ -103,6 +103,8 @@ func mapRussianType(typStr string) (domen.CommandType, bool) {
 		return domen.CmdMove, true
 	case "чтение":
 		return domen.CmdRead, true
+	case "компиляция":
+		return domen.CmdCompileCode, true
 	}
 	return "", false
 }
