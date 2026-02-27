@@ -1,7 +1,7 @@
 package service
 
 import (
-	"Ralf/internal/domen"
+	"Ralf/domen"
 	"reflect"
 	"testing"
 )
