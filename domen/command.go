@@ -17,10 +17,10 @@ const (
 
 // Command представляет одну атомарную команду для модификации файловой системы.
 type Command struct {
-	Type    CommandType
-	Path    string         // основной путь к файлу
-	Content string         // полный контент файла (для создания)
-	Lines   map[int]string // изменения по номерам строк (для редактирования)
-	SrcPath string         // исходный путь (копирование/перемещение)
-	DstPath string         // целевой путь (копирование/перемещение)
+	Type    string            `json:"Type"`
+	Path    string            `json:"Path"`
+	Content string            `json:"Content"`
+	Lines   map[string]string `json:"Lines"`
+	SrcPath string            `json:"SrcPath"`
+	DstPath string            `json:"DstPath"`
 }

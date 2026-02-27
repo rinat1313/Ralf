@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 // RunOrchestrator запускает главный цикл управления всеми модулями:
@@ -40,7 +42,7 @@ func RunOrchestrator(cfg domen.Config) error {
 	// основной цикл обработки задач
 	for i := 0; i < cfg.MaxTaskAttempts; i++ {
 		task, err := GetNewTask(cfg.TasksFilePath)
-		fmt.Printf("Получили задачу в тексте %s\n", task)
+		fmt.Printf("Получили задачу в тексте %d\n", task.Num)
 		if err != nil {
 			if errors.Is(err, errors.New("не найдено задач со статусом new")) {
 				return nil // все задачи обработаны
@@ -93,7 +95,7 @@ func checkGoAndFSAccess() error {
 // 4. Генерация тестов
 // 5. Компиляция тестов с исправлениями
 func processTask(task domen.Task, cfg domen.Config) error {
-	fmt.Printf("Отправляем структуру task в llm: %s\n", task)
+	//fmt.Printf("Отправляем структуру task в llm: %s\n", task)
 	// 1-2. Получаем и выполняем команды решения
 	commands, err := SendTaskToLLM(task)
 	if err != nil {
@@ -154,17 +156,36 @@ func processTask(task domen.Task, cfg domen.Config) error {
 	return nil
 }
 
-// generateTests отправляет LM Studio запрос на генерацию тестов.
+// generateTests отправляет LM Studio запрос на генерацию ТОЛЬКО тестов
 func generateTests(task domen.Task) ([]domen.Command, error) {
-	//testPrompt := fmt.Sprintf(`Напиши только тесты для задачи №%d в формате команд.
-	//Тесты должны быть в файле %s_test.go и использовать стандартный пакет testing.
-	//Верни ТОЛЬКО блоки команд.`, task.Num, task.FuncSignature)
-	// используем тот же механизм с системным промптом
-	//messages := []Message{
-	//	{Role: "system", Content: StrictCommandTemplate},
-	//	{Role: "user", Content: testPrompt},
-	//}
-	// здесь можно расширить, но для чистоты используем существующий клиент
-	// пока возвращаем через SendTaskToLLM с модифицированным промптом (упрощённо)
-	return SendTaskToLLM(task) // переиспользуем, LLM поймёт контекст
+	testPrompt := fmt.Sprintf(`Это уже решённая задача №%d.
+Сигнатура функции: %s
+
+Теперь напиши ТОЛЬКО тесты в формате JSON-массива команд.
+Тесты должны быть в файле task_%d/%s_test.go
+Используй пакет testing и таблицу тестов.
+Не трогай основной код — только создавай/редактируй тестовый файл.
+
+Пример:
+[
+  {
+    "Type": "создание",
+    "Path": "task_%d/%s_test.go",
+    "Content": "package main_test\\n\\nimport (\\n\\t\\"testing\\"\\n)\\n\\nfunc TestGreeting(t *testing.T) {\\n\\t// тесты здесь\\n}"
+  }
+]
+
+Верни ТОЛЬКО JSON-массив.`,
+		task.Num,
+		task.FuncSignature,
+		task.Num,
+		strings.TrimSuffix(filepath.Base(task.FuncSignature), " string) string"), // имя функции без сигнатуры
+		task.Num,
+		strings.TrimSuffix(filepath.Base(task.FuncSignature), " string) string"))
+
+	// Создаём временный task только для тестов (чтобы не менять оригинальный)
+	testTask := task
+	testTask.Description = testPrompt // переопределяем описание → LLM поймёт, что нужно тесты
+
+	return SendTaskToLLM(testTask)
 }

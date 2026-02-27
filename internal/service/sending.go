@@ -13,48 +13,39 @@ import (
 )
 
 const StrictCommandTemplate = `Ты — эксперт-программист Go с 5-летним опытом.
-Твоя ЕДИНСТВЕННАЯ задача — выполнять полученную задачу ИСКЛЮЧИТЕЛЬНО через блоки команд.
 
-ПРАВИЛО №1: Ты НЕ ИМЕЕШЬ ПРАВА выводить НИЧЕГО кроме блоков команд.
-Запрещено: любой текст до первого блока, объяснения, "Вот решение", markdown, комментарии, вступления, заключения.
+ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ №1: ВСЕ пути к файлам ДОЛЖНЫ начинаться с tasks/task_<номер задачи>/
+Примеры правильных путей:
+- tasks/task_1/main.go
+- tasks/task_1/greeting_test.go
+- tasks/task_2/add.go
+- tasks/task_3/is_even_test.go
 
-ПРАВИЛО №2: Каждый блок ОБЯЗАТЕЛЬНО заканчивается ровно строкой:
-Конец команды.
-Без пробелов после неё, без дополнительных символов.
+Никогда не используй пути без tasks/task_N/ в начале — это критическая ошибка!
 
-ПРАВИЛО №3: Каждый ответ состоит ТОЛЬКО из одного или нескольких блоков в ТОЧНОМ формате:
+Твоя ЕДИНСТВЕННАЯ задача — выполнять полученную задачу и вернуть ТОЛЬКО валидный JSON-массив.
+Важно: Все файлы — внутри tasks/task_<N>/, где N — номер текущей задачи.
+ПРАВИЛО №1: Ответ — строго JSON-массив объектов. Никакого текста до или после.
+ПРАВИЛО №2: Запрещено: markdown, json, объяснения, любые комментарии.
+ПРАВИЛО №3: Пример ответа (все пути начинаются с tasks/task_N/):
 
-Начало команды:
-тип: [один из разрешённых типов]
-адрес: /полный/путь/к/файлу.go
-
-[дополнительные поля в зависимости от типа]
-Конец команды.
-
-РАЗРЕШЁННЫЕ ТИПЫ И ИХ ТОЧНЫЙ ФОРМАТ (примеры):
-
-1. создание
-Начало команды:
-тип: создание
-адрес: /internal/greeting.go
-содержимое:
-package internal
-
-func Greeting(name string) string {
-    if name == "" {
-        return "Hello, World!"
-    }
-    return "Hello, " + name + "!"
+[
+{
+"Type": "создание",
+"Path": "tasks/task_1/main.go",
+"Content": "package main\\n\\nimport \\"fmt\\"\\n\\nfunc Greeting(name string) string {\\n\\tif name == \\"\\" {\\n\\t\\treturn \\"Hello, World!\\"\\n\\t}\\n\\treturn \\"Hello, \\" + name + \\"!\\"\\n}"
+},
+{
+"Type": "создание",
+"Path": "tasks/task_1/greeting_test.go",
+"Content": "package main_test\\n\\nimport (\\"testing\\")\\n\\nfunc TestGreeting(t *testing.T) {\\n\\t// тесты здесь\\n}"
 }
-Конец команды.
+]
 
-ПРАВИЛО №4: В конце КАЖДОГО блока ОБЯЗАТЕЛЬНО должна быть строка "Конец команды." — это строгое требование.
-ПРАВИЛО №5: Если нужно несколько действий — выводи несколько блоков подряд.
-ПРАВИЛО №6: Начинай ответ сразу с "Начало команды:" и заканчивай каждый блок "Конец команды.".
+ПРАВИЛО №4: Используй только поля: "Type", "Path", "Content", "Lines", "SrcPath", "DstPath".
+ПРАВИЛО №5: "Lines" — объект с ключами-строками (номера строк).
 
-Важно: Никогда не нарушай правило №2 и №4. Всегда заканчивай блок строкой "Конец команды.".
-
-Выполни следующую задачу строго по этому шаблону.`
+Выполни задачу и верни ТОЛЬКО JSON-массив.`
 
 // LLMClient управляет взаимодействием с LM Studio через OpenAI-compatible API.
 type LLMClient struct {
@@ -63,7 +54,6 @@ type LLMClient struct {
 	HTTPClient *http.Client
 }
 
-// NewLLMClient возвращает настроенный клиент для LM Studio.
 func NewLLMClient() *LLMClient {
 	return &LLMClient{
 		BaseURL: "http://localhost:1234/v1",
@@ -89,13 +79,17 @@ func (c *LLMClient) sendTask(task domen.Task) ([]domen.Command, error) {
 Тестовые данные: %s
 Сигнатура функции: %s
 
-Реализуй задачу строго по шаблону выше.`,
+Реализуй задачу строго по шаблону выше.
+Все файлы должны находиться внутри папки task_%d.
+Если нужно создать тесты — используй task_%d/<имя_функции>_test.go`,
 		task.Num,
 		task.Description,
 		task.ImportantInfo,
 		task.ExpectResult,
 		task.TestsValue,
-		task.FuncSignature)
+		task.FuncSignature,
+		task.Num,
+		task.Num)
 
 	reqBody := map[string]any{
 		"model": c.Model,
@@ -107,7 +101,6 @@ func (c *LLMClient) sendTask(task domen.Task) ([]domen.Command, error) {
 		"top_p":       1.0,
 		"max_tokens":  16384,
 		"stream":      false,
-		"stop":        []string{"Конец команды."},
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -134,24 +127,14 @@ func (c *LLMClient) sendTask(task domen.Task) ([]domen.Command, error) {
 		} `json:"choices"`
 	}
 
-	fmt.Printf("##########\nОт llm прищёл сырой ответ: %s\n###################\n", apiResp)
-
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return nil, fmt.Errorf("ошибка парсинга JSON ответа: %w", err)
 	}
-
-	fmt.Printf("От llm прищёл сырой текст: %s\n", apiResp.Choices[0].Message.Content)
 
 	if len(apiResp.Choices) == 0 || apiResp.Choices[0].Message.Content == "" {
 		return nil, errors.New("LM Studio вернул пустой ответ")
 	}
 
 	llmOutput := apiResp.Choices[0].Message.Content
-
-	commands, err := ParseCommands(llmOutput)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка парсинга команд LLM: %w", err)
-	}
-
-	return commands, nil
+	return ParseCommands(llmOutput)
 }

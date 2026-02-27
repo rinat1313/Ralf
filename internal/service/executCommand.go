@@ -7,33 +7,33 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
 // ExecuteCommand выполняет переданную команду.
-// Возвращает содержимое файла только для CmdRead, иначе пустую строку.
 func ExecuteCommand(cmd domen.Command) (string, error) {
 	switch cmd.Type {
-	case domen.CmdCreate:
+	case "создание":
 		return "", executeCreate(cmd)
-	case domen.CmdDelete:
+	case "удаление":
 		return "", executeDelete(cmd)
-	case domen.CmdEdit:
+	case "внесение изменений":
 		return "", executeEdit(cmd)
-	case domen.CmdAddLines:
+	case "добавление строк":
 		return "", executeAddLines(cmd)
-	case domen.CmdDeleteLines:
+	case "удаление строк":
 		return "", executeDeleteLines(cmd)
-	case domen.CmdCopy:
+	case "копирование":
 		return "", executeCopy(cmd)
-	case domen.CmdMove:
+	case "перемещение":
 		return "", executeMove(cmd)
-	case domen.CmdRead:
+	case "чтение":
 		return executeRead(cmd)
-	case domen.CmdCompileCode:
+	case "компиляция":
 		return executeCompile(cmd)
 	default:
-		return "", fmt.Errorf("неизвестный тип команды: %s", cmd.Type)
+		return "", fmt.Errorf("неизвестный тип команды: %q", cmd.Type)
 	}
 }
 
@@ -96,7 +96,11 @@ func executeEdit(cmd domen.Command) error {
 	if err != nil {
 		return fmt.Errorf("не удалось прочитать файл %s: %w", cmd.Path, err)
 	}
-	for lineNum, newText := range cmd.Lines {
+	for lineNumStr, newText := range cmd.Lines {
+		lineNum, err := strconv.Atoi(lineNumStr)
+		if err != nil {
+			return fmt.Errorf("некорректный номер строки %q: %w", lineNumStr, err)
+		}
 		if lineNum < 1 || lineNum > len(lines) {
 			return fmt.Errorf("строка %d не существует в файле %s (всего строк: %d)", lineNum, cmd.Path, len(lines))
 		}
@@ -118,11 +122,15 @@ func executeAddLines(cmd domen.Command) error {
 	}
 	currentLen := len(lines)
 	keys := make([]int, 0, len(cmd.Lines))
-	for k := range cmd.Lines {
+	for kStr := range cmd.Lines {
+		k, err := strconv.Atoi(kStr)
+		if err != nil {
+			return fmt.Errorf("некорректный номер строки для добавления %q: %w", kStr, err)
+		}
 		keys = append(keys, k)
 	}
 	sort.Ints(keys)
-	if keys[0] != currentLen+1 {
+	if len(keys) == 0 || keys[0] != currentLen+1 {
 		return fmt.Errorf("нельзя добавить строку %d: файл содержит только %d строк", keys[0], currentLen)
 	}
 	for i := 1; i < len(keys); i++ {
@@ -131,7 +139,7 @@ func executeAddLines(cmd domen.Command) error {
 		}
 	}
 	for _, k := range keys {
-		lines = append(lines, cmd.Lines[k])
+		lines = append(lines, cmd.Lines[strconv.Itoa(k)])
 	}
 	return writeLines(cmd.Path, lines)
 }
@@ -148,7 +156,11 @@ func executeDeleteLines(cmd domen.Command) error {
 		return fmt.Errorf("не удалось прочитать файл %s: %w", cmd.Path, err)
 	}
 	keys := make([]int, 0, len(cmd.Lines))
-	for k := range cmd.Lines {
+	for kStr := range cmd.Lines {
+		k, err := strconv.Atoi(kStr)
+		if err != nil {
+			return fmt.Errorf("некорректный номер строки для удаления %q: %w", kStr, err)
+		}
 		keys = append(keys, k)
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(keys))) // удаляем с большей строки к меньшей
