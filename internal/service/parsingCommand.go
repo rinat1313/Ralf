@@ -13,7 +13,9 @@ import (
 func ParseCommands(response string) ([]domen.Command, error) {
 	var commands []domen.Command
 
-	blockRe := regexp.MustCompile(`(?s)Начало команды:(.*?)Конец команды\.`)
+	fmt.Printf("От LLM получен ответ %s\n", response)
+
+	blockRe := regexp.MustCompile(`(?s)Начало команды:(.*?)(?:Конец команды\.|$)`)
 	matches := blockRe.FindAllStringSubmatch(response, -1)
 
 	for _, match := range matches {

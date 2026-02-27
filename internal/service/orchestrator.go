@@ -40,6 +40,7 @@ func RunOrchestrator(cfg domen.Config) error {
 	// основной цикл обработки задач
 	for i := 0; i < cfg.MaxTaskAttempts; i++ {
 		task, err := GetNewTask(cfg.TasksFilePath)
+		fmt.Printf("Получили задачу в тексте %s\n", task)
 		if err != nil {
 			if errors.Is(err, errors.New("не найдено задач со статусом new")) {
 				return nil // все задачи обработаны
@@ -92,6 +93,7 @@ func checkGoAndFSAccess() error {
 // 4. Генерация тестов
 // 5. Компиляция тестов с исправлениями
 func processTask(task domen.Task, cfg domen.Config) error {
+	fmt.Printf("Отправляем структуру task в llm: %s\n", task)
 	// 1-2. Получаем и выполняем команды решения
 	commands, err := SendTaskToLLM(task)
 	if err != nil {
