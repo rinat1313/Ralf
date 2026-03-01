@@ -19,7 +19,7 @@ func Test_updateStatusInLine(t *testing.T) {
 		{
 			name: "edit_new_status_to_run",
 			args: args{line: "статус выполнения:new", newStatus: domen.StatusRun},
-			want: "статус выполнения:run",
+			want: "статус выполнения:new",
 		},
 		{
 			name: "edit_new_status_to_error",

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -119,7 +118,7 @@ func processTask(task domen.Task, cfg domen.Config) error {
 		fmt.Printf("Попытка исправления %d/%d...\n", i+1, cfg.MaxCompileFixAttempts)
 
 		fixResp, fixErr := SendCompilationError(
-			"tasks/task_"+strconv.Itoa(task.Num)+"/main.go",
+			"prog/main.go",
 			compileLog,
 			i+1, // ← передаём номер попытки
 		)
@@ -172,7 +171,7 @@ func generateTests(task domen.Task) ([]domen.Command, error) {
 Сигнатура функции: %s
 
 Теперь напиши ТОЛЬКО тесты в формате JSON-массива команд.
-Тесты должны быть в файле task_%d/%s_test.go
+Тесты должны быть в файле prog/%s_test.go
 Используй пакет testing и таблицу тестов.
 Не трогай основной код — только создавай/редактируй тестовый файл.
 
@@ -180,7 +179,7 @@ func generateTests(task domen.Task) ([]domen.Command, error) {
 [
   {
     "Type": "создание",
-    "Path": "task_%d/%s_test.go",
+    "Path": "prog/%s_test.go",
     "Content": "package main_test\\n\\nimport (\\n\\t\\"testing\\"\\n)\\n\\nfunc TestGreeting(t *testing.T) {\\n\\t// тесты здесь\\n}"
   }
 ]
@@ -188,9 +187,7 @@ func generateTests(task domen.Task) ([]domen.Command, error) {
 Верни ТОЛЬКО JSON-массив.`,
 		task.Num,
 		task.FuncSignature,
-		task.Num,
 		strings.TrimSuffix(filepath.Base(task.FuncSignature), " string) string"), // имя функции без сигнатуры
-		task.Num,
 		strings.TrimSuffix(filepath.Base(task.FuncSignature), " string) string"))
 
 	// Создаём временный task только для тестов (чтобы не менять оригинальный)

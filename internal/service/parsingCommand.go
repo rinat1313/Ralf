@@ -23,9 +23,9 @@ func ParseCommands(response string) ([]domen.Command, error) {
 	fmt.Println("Начинаем парсинг JSON.")
 	var commands []domen.Command
 	if err := json.Unmarshal([]byte(response), &commands); err != nil {
-		fmt.Println("--------------")
-		fmt.Printf("Текст: %s\n", response)
-		fmt.Println("--------------")
+		//fmt.Println("--------------")
+		//fmt.Printf("Текст: %s\n", response)
+		//fmt.Println("--------------")
 		return nil, fmt.Errorf("ошибка парсинга JSON: %w", err)
 	}
 
@@ -33,6 +33,6 @@ func ParseCommands(response string) ([]domen.Command, error) {
 		return nil, errors.New("в ответе LM Studio не обнаружено ни одной команды")
 	}
 	fmt.Printf("Количество полученных команд: %d\n", len(commands))
-	fmt.Println(commands)
+	//fmt.Println(commands)
 	return commands, nil
 }

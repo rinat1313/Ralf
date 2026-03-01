@@ -30,8 +30,8 @@ const StrictCommandTemplate = `Ты — эксперт-программист Go
 Пример правильного поля Type:
 "Type": "внесение изменений"   ← именно так, полностью
 
-ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ №1: ВСЕ пути начинаются с tasks/task_<номер задачи>/
-Примеры: tasks/task_1/main.go, tasks/task_1/greeting_test.go
+ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ №1: ВСЕ пути начинаются с prog/
+Примеры: prog/main.go, prog/greeting_test.go
 
 ПРАВИЛО №1: Ответ — ТОЛЬКО JSON-массив. Никакого текста, markdown, ±json.
 ПРАВИЛО №2: Пример ответа:
@@ -39,7 +39,7 @@ const StrictCommandTemplate = `Ты — эксперт-программист Go
 [
 {
 "Type": "создание",
-"Path": "tasks/task_1/main.go",
+"Path": "prog/main.go",
 "Content": "package main\\n\\nimport \\"fmt\\"\\n\\nfunc Greeting(name string) string {\\n\\tif name == \\"\\" {\\n\\t\\treturn \\"Hello, World!\\"\\n\\t}\\n\\treturn \\"Hello, \\" + name + \\"!\\"\\n}"
 }
 ]
@@ -79,16 +79,14 @@ func (c *LLMClient) sendTask(task domen.Task) ([]domen.Command, error) {
 Сигнатура функции: %s
 
 Реализуй задачу строго по шаблону выше.
-Все файлы должны находиться внутри папки task_%d.
-Если нужно создать тесты — используй task_%d/<имя_функции>_test.go`,
+Все файлы должны находиться внутри папки prog/.
+Если нужно создать тесты — используй prog/<имя_функции>_test.go`,
 		task.Num,
 		task.Description,
 		task.ImportantInfo,
 		task.ExpectResult,
 		task.TestsValue,
-		task.FuncSignature,
-		task.Num,
-		task.Num)
+		task.FuncSignature)
 
 	reqBody := map[string]any{
 		"model": c.Model,

@@ -23,10 +23,10 @@ func buildSystemPrompt() string {
 	return `Ты — эксперт-программист Go.
 Твоя ЕДИНСТВЕННАЯ задача — выполнять задачу и возвращать ТОЛЬКО валидный JSON-массив объектов.
 
-ВАЖНЕЙШЕЕ ПРАВИЛО: ВСЕ пути начинаются с tasks/task_<номер задачи>/
-Примеры: tasks/task_1/main.go, tasks/task_1/greeting_test.go
+ВАЖНЕЙШЕЕ ПРАВИЛО: ВСЕ пути начинаются с prog/
+Примеры: prog/main.go, prog/greeting_test.go
 
-Никогда не используй абсолютные пути или пути без tasks/task_N/
+Никогда не используй абсолютные пути или пути без prog/
 
 ПРАВИЛО №1: Ответ — ТОЛЬКО JSON-массив. Никакого текста, markdown, json.
 		ПРАВИЛО №2: Каждый объект — одна команда. Пример:
@@ -34,7 +34,7 @@ func buildSystemPrompt() string {
 [
 {
 "Type": "создание",
-"Path": "tasks/task_1/main.go",
+"Path": "prog/main.go",
 "Content": "package main\\n\\nimport \\"fmt\\"\\n\\nfunc Greeting(name string) string {\\n\\tif name == \\"\\" {\\n\\t\\treturn \\"Hello, World!\\"\\n\\t}\\n\\treturn \\"Hello, \\" + name + \\"!\\"\\n}"
 }
 ]

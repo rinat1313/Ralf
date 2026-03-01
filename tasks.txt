@@ -1,69 +1,360 @@
 начало задачи:
 номер задачи:1
-описание задачи:Initialize the Go module and create the basic project structure.
-важные моменты:Project name must be telegram-notifier. Use Go 1.21 or higher. No additional files except main.go initially.
-ожидаемый результат:go.mod file created with module telegram-notifier.
-тестовые данные:Run 'go mod init telegram-notifier'; file go.mod must exist and contain 'module telegram-notifier'.
-сигнатура функции:N/A
-статус выполнения:ok
+описание задачи:Create the root directory structure for the Go project following standard layout including cmd, internal, pkg, config, docker directories.
+важные моменты:Use classical Go project layout with domain, internal, app packages. No external references or links allowed. All names must be in English.
+ожидаемый результат:Project root contains cmd/app, internal/config, internal/domain, internal/repository, internal/service, internal/telegram, internal/handlers, internal/app, config folder with sample yaml.
+тестовые данные:Directory tree after creation matches expected layout; empty directories created without errors.
+сигнатура функции:
+статус выполнения:error
 конец задачи.
-
 начало задачи:
 номер задачи:2
-описание задачи:Add the Telegram Bot API library as a dependency.
-важные моменты:Use the most popular and maintained library: github.com/go-telegram-bot-api/telegram-bot-api/v5.
-ожидаемый результат:Dependency added to go.mod and go.sum without errors.
-тестовые данные:Execute 'go get github.com/go-telegram-bot-api/telegram-bot-api/v5'; go.mod must contain the library version.
-сигнатура функции:N/A
+описание задачи:Initialize go.mod file with module name telegram-bot-service and Go version 1.23.
+важные моменты:Module name must be telegram-bot-service. Include necessary indirect dependencies placeholders for future telegram and http libraries.
+ожидаемый результат:go.mod file created with correct module and go directive.
+тестовые данные:go mod tidy succeeds; module path is telegram-bot-service.
+сигнатура функции:
 статус выполнения:ok
 конец задачи.
-
 начало задачи:
 номер задачи:3
-описание задачи:Define the Config struct to hold bot configuration.
-важные моменты:Struct must contain BotToken (string) and ChatID (int64). All fields exported.
-ожидаемый результат:Config type ready for environment loading.
-тестовые данные:Struct literal with valid values compiles without errors.
-сигнатура функции:type Config struct
-статус выполнения:error
-конец задачи.
-
-начало задачи:
-номер задачи:4
-описание задачи:Implement loadConfig function to read BOT_TOKEN and CHAT_ID from environment variables.
-важные моменты:Validate that both variables are set. Return meaningful errors for missing or invalid values. Use strconv for ChatID parsing.
-ожидаемый результат:Function returns valid Config or error.
-тестовые данные:Valid env -> Config; empty BOT_TOKEN -> error "BOT_TOKEN environment variable is required"; invalid CHAT_ID -> parse error.
-сигнатура функции:func loadConfig() (Config, error)
+описание задачи:Create config/config.go file with struct definitions for application configuration including Telegram and HTTP sections.
+важные моменты:Use YAML tags for unmarshaling. Structure must support future DB switch via config flag.
+ожидаемый результат:Config struct ready for YAML loading with TelegramToken, BotDebug, HTTPServer Port, StorageType fields.
+тестовые данные:Input yaml with TelegramToken: "123456" -> unmarshaled struct has correct values; empty yaml -> default zero values.
+сигнатура функции:func LoadConfig(path string) (Config, error)
 статус выполнения:ok
 конец задачи.
-
 начало задачи:
-номер задачи:5
-описание задачи:Implement sendCompletionMessage function to initialize the bot and send "Tasks completed".
-важные моменты:Use tgbotapi.NewBotAPI and NewMessage. Handle all possible API errors.
-ожидаемый результат:Message sent to the specified chat ID or error returned.
-тестовые данные:Valid token and chat -> success; invalid token -> bot creation error; invalid chat ID -> send error.
-сигнатура функции:func sendCompletionMessage(cfg Config) error
+номер задачи:4
+описание задачи:Implement YAML configuration loader in internal/config/loader.go that reads from config.yaml file.
+важные моменты:Support environment variable overrides if present. Handle file not found as fatal error. Use viper or standard yaml package.
+ожидаемый результат:Function loads YAML into Config struct without errors on valid file.
+тестовые данные:Valid config.yaml with port 8080 -> returns Config{HTTPServer: {Port: 8080}}; missing file -> returns error; invalid yaml syntax -> returns parse error.
+сигнатура функции:func LoadConfig(path string) (Config, error)
 статус выполнения:error
 конец задачи.
-
+начало задачи:
+номер задачи:5
+описание задачи:Create default config.yaml template in config directory with sections for telegram and http.
+важные моменты:Include comments in English explaining each field. StorageType default to "json".
+ожидаемый результат:File contains sample values for token, debug, port, storage_type.
+тестовые данные:After creation, yaml is valid and parsable into Config struct.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
 начало задачи:
 номер задачи:6
-описание задачи:Implement the main function to orchestrate config loading and message sending.
-важные моменты:Use log.Fatal for any error. Print success message on completion. Follow Clean Code principles.
-ожидаемый результат:Bot starts on program execution (the triggering event) and sends the notification.
-тестовые данные:Correct env -> "Success: notification has been sent"; missing env -> fatal config error.
+описание задачи:Define domain models in internal/domain/models.go: User, Message, Notification structs.
+важные моменты:User must have TelegramChatID, Username. Message has Text, Timestamp. All fields exported with JSON tags for storage.
+ожидаемый результат:Structs ready for use in repository and services.
+тестовые данные:User{ChatID: 123456789, Username: "testuser"} -> json marshals correctly; empty User -> zero values.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:7
+описание задачи:Define Storage interface in internal/repository/storage.go with methods for user and message persistence.
+важные моменты:Interface must support future Postgres replacement: SaveUser, GetUserByChatID, SaveMessage, GetAllUsers. No implementation here.
+ожидаемый результат:Interface defined with exact method signatures.
+тестовые данные:Interface can be satisfied by JSON impl later.
+сигнатура функции:type Storage interface { SaveUser(user domain.User) error ... }
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:8
+описание задачи:Implement JSON storage in internal/repository/json_storage.go using file operations for users.json and messages.json.
+важные моменты:Use os and encoding/json. Handle concurrent access with mutex. Create files if not exist. StorageType from config must select this.
+ожидаемый результат:Repository implements Storage interface using JSON files.
+тестовые данные:SaveUser with ChatID 123 -> file contains json array; GetAllUsers after save -> returns slice with 1 user; empty file -> empty slice; invalid json -> error.
+сигнатура функции:func NewJSONStorage(path string) (repository.Storage, error)
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:9
+описание задачи:Create repository factory in internal/repository/factory.go that returns Storage based on config.StorageType.
+важные моменты:Currently only "json" supported, return error for others. This allows easy switch to postgres later.
+ожидаемый результат:Factory returns JSONStorage when config is "json".
+тестовые данные:Config{StorageType:"json"} -> JSONStorage; Config{StorageType:"postgres"} -> error "not implemented".
+сигнатура функции:func NewStorage(cfg config.Config) (repository.Storage, error)
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:10
+описание задачи:Implement Telegram client wrapper in internal/telegram/client.go using go-telegram-bot-api library.
+важные моменты:Add go get github.com/go-telegram-bot-api/telegram-bot-api/v5 in mind (but no execution). Init bot with token from config.
+ожидаемый результат:Client struct with BotAPI instance and SendMessage method.
+тестовые данные:Valid token -> client initialized; invalid token -> init error; SendMessage to chatID 123 with text "test" -> no panic.
+сигнатура функции:func NewTelegramClient(token string, debug bool) (*TelegramClient, error)
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:11
+описание задачи:Implement SendNotification method in Telegram client that sends text message to specific chat ID.
+важные моменты:Use bot.Send method. Handle Telegram API errors gracefully. Support markdown if needed in future.
+ожидаемый результат:Method sends message and returns error only on API failure.
+тестовые данные:chatID 123456789, text "Tasks completed" -> success; invalid chatID -> telegram error; empty text -> success with empty message.
+сигнатура функции:func (c *TelegramClient) SendNotification(chatID int64, text string) error
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:12
+описание задачи:Implement long polling listener in internal/telegram/poller.go to keep bot alive and handle basic updates (no commands yet).
+важные моменты:new in goroutine. Log received updates. No webhook for simplicity.
+ожидаемый результат:Poller starts without blocking main and keeps connection.
+тестовые данные:Start poller -> no immediate error; stop via context -> graceful shutdown.
+сигнатура функции:func (c *TelegramClient) StartPolling(ctx context.Context) error
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:13
+описание задачи:Create service layer in internal/service/notification_service.go with SendCompletionNotification method.
+важные моменты:Use storage to get all users, then telegram client to send to each. Handle partial failures.
+ожидаемый результат:Service sends message to all registered users.
+тестовые данные:2 users in storage -> 2 messages sent; 0 users -> no send, success; one API failure -> still continue for others and log.
+сигнатура функции:func (s *NotificationService) SendCompletionNotification(ctx context.Context) error
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:14
+описание задачи:Implement REST handler for /end GET endpoint in internal/handlers/end_handler.go.
+важные моменты:Use net/http or chi/gorilla. On GET call service.SendCompletionNotification and return JSON {status: "done"}.
+ожидаемый результат:Endpoint triggers notification and responds 200.
+тестовые данные:GET /end -> 200 with {"status":"tasks completed"}; service error -> 500 with error json.
+сигнатура функции:func EndHandler(service *service.NotificationService) http.HandlerFunc
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:15
+описание задачи:Create HTTP server setup in internal/handlers/router.go with /end route registered.
+важные моменты:Use standard http.ServeMux for minimalism. Add health /health check.
+ожидаемый результат:Router with /end and /health endpoints.
+тестовые данные:GET /health -> 200 {"status":"ok"}; GET /end -> triggers service.
+сигнатура функции:func NewRouter(service *service.NotificationService) *http.ServeMux
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:16
+описание задачи:Implement application wiring in internal/app/app.go with dependency injection for config, storage, telegram, service, server.
+важные моменты:Use context for graceful shutdown. Start both HTTP server and telegram poller in goroutines.
+ожидаемый результат:App struct with Start and Shutdown methods.
+тестовые данные:NewApp with valid config -> no error; Start() -> servers running.
+сигнатура функции:func NewApp(cfg config.Config) (*App, error)
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:17
+описание задачи:Create main.go in cmd/app that loads config, creates App and calls Start.
+важные моменты:Handle os signals for shutdown. Log startup.
+ожидаемый результат:Application starts correctly from main.
+тестовые данные:go run cmd/app/main.go with config -> "Bot started" log; Ctrl+C -> graceful stop.
 сигнатура функции:func main()
 статус выполнения:error
 конец задачи.
-
 начало задачи:
-номер задачи:7
-описание задачи:Add comprehensive error handling and logging throughout the application.
-важные моменты:Wrap all errors with fmt.Errorf. No panics. All logs in English.
-ожидаемый результат:Application never crashes silently; clear error messages for all edge cases.
-тестовые данные:Network failure, invalid token, missing env vars — all produce descriptive fatal logs.
-сигнатура функции:N/A (refactoring task)
+номер задачи:18
+описание задачи:Implement graceful shutdown for HTTP server and Telegram poller in internal/app/app.go.
+важные моменты:Use context.WithTimeout. Close storage files if needed.
+ожидаемый результат:Shutdown stops all components without data loss.
+тестовые данные:Shutdown after /end call -> no goroutine leak; 5s timeout -> force close.
+сигнатура функции:func (a *App) Shutdown(ctx context.Context) error
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:19
+описание задачи:Add structured logging package in internal/logger/logger.go using zap or log/slog.
+важные моменты:Info, Error levels. Log config load, message sent, errors.
+ожидаемый результат:Logger initialized from config.
+тестовые данные:Log "message sent to 123" -> appears in stdout; error case -> error level.
+сигнатура функции:func NewLogger(debug bool) *Logger
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:20
+описание задачи:Integrate logger into config loader, storage, telegram client, service.
+важные моменты:Pass logger to all components via DI.
+ожидаемый результат:All layers log key events.
+тестовые данные:Start app -> "config loaded" log; send notification -> "sent to X users".
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:21
+описание задачи:Create Dockerfile in docker directory for multi-stage build of the Go application.
+важные моменты:Use golang:1.23-alpine as builder, scratch or alpine runtime. Copy config.yaml, binary. Expose port 8080.
+ожидаемый результат:Docker image builds and runs the bot.
+тестовые данные:docker build -t bot . succeeds; docker run -> app starts, /end accessible.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:22
+описание задачи:Add .dockerignore file excluding unnecessary files like git, test data.
+важные моменты:Keep only source, config, docker.
+ожидаемый результат:Build context minimal.
+тестовые данные:Build after ignore -> smaller context.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:23
+описание задачи:Implement user registration helper in storage: method to add user if not exists (for future bot commands).
+важные моменты:Called from telegram poller on /start simulation.
+ожидаемый результат:Users.json grows with new chatIDs.
+тестовые данные:Register chatID 111 -> file updated; duplicate -> no duplicate.
+сигнатура функции:func (s *JSONStorage) RegisterUser(chatID int64, username string) error
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:24
+описание задачи:Add basic health check handler in router that returns application status.
+важные моменты:Check storage connectivity (file writable) and telegram token presence.
+ожидаемый результат:/health returns 200 with json status.
+тестовые данные:Healthy -> {"status":"ok","storage":"json"}; missing config -> error.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:25
+описание задачи:Create error handling middleware for HTTP handlers returning JSON errors.
+важные моменты:Wrap all routes. Standard error response format.
+ожидаемый результат:500 errors returned as {"error":"message"}.
+тестовые данные:Service panic -> 500 json; normal -> no middleware interference.
+сигнатура функции:func ErrorMiddleware(next http.Handler) http.Handler
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:26
+описание задачи:Implement configuration validation in config loader: check required fields like token not empty.
+важные моменты:Return specific validation errors.
+ожидаемый результат:Invalid config -> early error on startup.
+тестовые данные:Empty token -> "telegram token required"; port 0 -> "invalid port".
+сигнатура функции:func (c Config) Validate() error
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:27
+описание задачи:Add context support to all repository methods for future cancellation.
+важные моменты:Update interface and JSON impl.
+ожидаемый результат:Methods accept ctx and respect cancellation.
+тестовые данные:Ctx done before save -> context error.
+сигнатура функции:func (s *JSONStorage) SaveUser(ctx context.Context, user domain.User) error
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:28
+описание задачи:Update notification service to broadcast only to users who have "active" flag (add field to domain.User).
+важные моменты:Extend model with Active bool.
+ожидаемый результат:Only active users receive messages.
+тестовые данные:1 active, 1 inactive -> only 1 message sent.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:29
+описание задачи:Create sample test data files: users.json and messages.json with edge cases.
+важные моменты:Include empty array, max int64 chatID, unicode usernames.
+ожидаемый результат:JSON files valid for testing.
+тестовые данные:Load empty -> 0 users; load with {"chat_id":9223372036854775807} -> no overflow.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:30
+описание задачи:Implement unit test helper functions in internal/repository/json_storage_test.go but only stubs for now (task is skeleton).
+важные моменты:Prepare for future tests with table driven.
+ожидаемый результат:Test file with TestNewJSONStorage.
+тестовые данные:
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:31
+описание задачи:Add Docker entrypoint script if needed for config copy.
+важные моменты:Simple CMD ["/app"].
+ожидаемый результат:Container starts main correctly.
+тестовые данные:docker run -> logs "starting bot".
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:32
+описание задачи:Create internal/app/di.go for centralized dependency injection wiring.
+важные моменты:Separate concern from app struct.
+ожидаемый результат:Clean NewApp using factory functions.
+тестовые данные:All dependencies resolved without cyclic imports.
+сигнатура функции:func BuildContainer(cfg config.Config) (*App, error)
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:33
+описание задачи:Handle storage file permissions and creation in JSON repository init.
+важные моменты:0644 mode, create dir if needed.
+ожидаемый результат:Files created automatically on first run.
+тестовые данные:No files -> auto create; permission denied -> error.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:34
+описание задачи:Implement message history saving after each notification send.
+важные моменты:Store in messages.json with timestamp.
+ожидаемый результат:Audit trail of sent notifications.
+тестовые данные:Send 1 notification -> 1 record in messages.json.
+сигнатура функции:func (s *JSONStorage) SaveSentMessage(ctx context.Context, msg domain.Message) error
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:35
+описание задачи:Update /end handler to return count of notified users in response JSON.
+важные моменты:Extend response struct.
+ожидаемый результат:POST or GET /end returns {"status":"tasks completed","notified":5}.
+тестовые данные:5 users -> notified:5; 0 -> 0.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:36
+описание задачи:Create pkg/utils package with helper for loading environment variables into config.
+важные моменты:Override yaml with ENV if set (e.g. TELEGRAM_TOKEN).
+ожидаемый результат:Config supports env overrides.
+тестовые данные:ENV TELEGRAM_TOKEN=abc -> config uses it even if yaml different.
+сигнатура функции:func LoadEnvOverrides(cfg *config.Config)
+статус выполнения:ok
+конец задачи.
+начало задачи:
+номер задачи:37
+описание задачи:Add rate limiting stub for telegram sends in service layer (future proof).
+важные моменты:Simple sleep or token bucket skeleton.
+ожидаемый результат:No more than 30 msg/sec (commented).
+тестовые данные:Multiple sends -> no violation yet.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:38
+описание задачи:Implement shutdown hook to flush pending messages to storage.
+важные моменты:On SIGTERM save all in-memory if any.
+ожидаемый результат:No data loss on container stop.
+тестовые данные:Kill container after send -> messages.json updated.
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:39
+описание задачи:Create README.md skeleton in root describing endpoints and docker run command (in English).
+важные моменты:No code examples beyond basic.
+ожидаемый результат:Documented how to start with docker run -p 8080:8080 bot.
+тестовые данные:
+сигнатура функции:
+статус выполнения:error
+конец задачи.
+начало задачи:
+номер задачи:40
+описание задачи:Finalize main integration test scenario: start docker, curl /end, verify telegram message sent (via logs).
+важные моменты:Only describe in comments.
+ожидаемый результат:End-to-end flow works.
+тестовые данные:curl http://localhost:8080/end -> 200 and log "sent completion".
+сигнатура функции:
 статус выполнения:error
 конец задачи.
