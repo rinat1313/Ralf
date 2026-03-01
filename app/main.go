@@ -10,9 +10,9 @@ import (
 func main() {
 	cfg := domen.Config{
 		TasksFilePath:         "tasks.txt",
-		MaxTaskAttempts:       10,
-		MaxCompileFixAttempts: 10,
-		MaxTestAttempts:       10,
+		MaxTaskAttempts:       5,
+		MaxCompileFixAttempts: 5,
+		MaxTestAttempts:       5,
 		WorkingDir:            ".",
 	}
 	if err := service.RunOrchestrator(cfg); err != nil {

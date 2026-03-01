@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -19,29 +20,30 @@ const (
 // buildSystemPrompt формирует предварительный системный промпт, строго определяющий
 // формат ответа LM Studio для совместимости с ParseCommands.
 func buildSystemPrompt() string {
-	return `Ты — эксперт-программист Go. Решаешь задачи и возвращаешь ТОЛЬКО команды в строгом формате.
+	return `Ты — эксперт-программист Go.
+Твоя ЕДИНСТВЕННАЯ задача — выполнять задачу и возвращать ТОЛЬКО валидный JSON-массив объектов.
 
-Используй блоки:
+ВАЖНЕЙШЕЕ ПРАВИЛО: ВСЕ пути начинаются с tasks/task_<номер задачи>/
+Примеры: tasks/task_1/main.go, tasks/task_1/greeting_test.go
 
-Начало команды:
-тип: создание
-адрес: /path/to/file.go
-содержимое:
-...полный код...
-Конец команды.
+Никогда не используй абсолютные пути или пути без tasks/task_N/
 
-Или для редактирования:
-тип: внесение изменений
-адрес: /path/to/file.go
-строки: {5:"новый код", 12:"другой код"}
-Конец команды.
+ПРАВИЛО №1: Ответ — ТОЛЬКО JSON-массив. Никакого текста, markdown, json.
+		ПРАВИЛО №2: Каждый объект — одна команда. Пример:
 
-Для компиляции:
-тип: компиляция
-адрес: /path/to/main.go
-Конец команды.
+[
+{
+"Type": "создание",
+"Path": "tasks/task_1/main.go",
+"Content": "package main\\n\\nimport \\"fmt\\"\\n\\nfunc Greeting(name string) string {\\n\\tif name == \\"\\" {\\n\\t\\treturn \\"Hello, World!\\"\\n\\t}\\n\\treturn \\"Hello, \\" + name + \\"!\\"\\n}"
+}
+]
 
-Никакого текста вне этих блоков. Только команды.`
+ПРАВИЛО №3: Используй поля: "Type", "Path", "Content", "Lines", "SrcPath", "DstPath".
+ПРАВИЛО №4: "Lines" — объект с ключами-строками (номера строк как строки).
+ПРАВИЛО №5: В Content используй \\n для переносов строк.
+
+Выполни задачу и верни ТОЛЬКО JSON-массив.`
 }
 
 // taskToPrompt формирует пользовательский промпт из структуры Task.
@@ -68,10 +70,28 @@ func SendTaskToLMStudio(task domen.Task) (string, error) {
 	return sendToLMStudio(messages)
 }
 
-// SendCompilationError отправляет лог ошибки компиляции в LM Studio.
-// LM Studio возвращает список исправляющих команд в требуемом формате.
-func SendCompilationError(path, compileLog string) (string, error) {
-	prompt := fmt.Sprintf("Файл %s не компилируется. Лог ошибки:\n\n%s\n\nИсправь код. Верни только команды для исправления.", path, compileLog)
+// SendCompilationError — теперь LLM видит текущий код файла и понимает, что это повторная попытка
+func SendCompilationError(path, compileLog string, attempt int) (string, error) {
+	// Читаем текущий код файла
+	currentCode := ""
+	if data, err := os.ReadFile(path); err == nil {
+		currentCode = string(data)
+	}
+
+	prompt := fmt.Sprintf(`Это ПОПЫТКА ИСПРАВЛЕНИЯ №%d (максимум 10).
+
+Файл: %s
+
+ТЕКУЩИЙ КОД (который сейчас НЕ компилируется):
+go
+	%s
+	Лог ошибки компиляции:
+	%s
+	Предыдущие исправления НЕ СРАБОТАЛИ.
+		НЕ повторяй предыдущий код!
+		Внеси реальные изменения, чтобы файл скомпилировался без ошибок.
+		Верни ТОЛЬКО JSON-массив команд (как всегда).`,
+		attempt, path, currentCode, compileLog)
 	messages := []Message{
 		{Role: "system", Content: buildSystemPrompt()},
 		{Role: "user", Content: prompt},

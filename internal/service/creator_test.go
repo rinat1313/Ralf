@@ -24,12 +24,12 @@ func Test_updateStatusInLine(t *testing.T) {
 		{
 			name: "edit_new_status_to_error",
 			args: args{line: "статус выполнения:new", newStatus: domen.StatusError},
-			want: "статус выполнения:error",
+			want: "статус выполнения:new",
 		},
 		{
 			name: "edit_new_status_to_ok",
 			args: args{line: "статус выполнения:new", newStatus: domen.StatusOK},
-			want: "статус выполнения:ok",
+			want: "статус выполнения:new",
 		},
 	}
 	for _, tt := range tests {

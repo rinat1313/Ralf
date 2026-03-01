@@ -8,19 +8,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-// RunOrchestrator запускает главный цикл управления всеми модулями:
-// проверка окружения → чтение задач → обработка одной задачи с лимитами циклов.
-// Вызывается из main().
+// RunOrchestrator запускает обработку ВСЕХ задач со статусом "new"
 func RunOrchestrator(cfg domen.Config) error {
 	// значения по умолчанию
 	if cfg.TasksFilePath == "" {
 		cfg.TasksFilePath = "tasks.txt"
-	}
-	if cfg.MaxTaskAttempts == 0 {
-		cfg.MaxTaskAttempts = 10
 	}
 	if cfg.MaxCompileFixAttempts == 0 {
 		cfg.MaxCompileFixAttempts = 10
@@ -32,6 +28,7 @@ func RunOrchestrator(cfg domen.Config) error {
 		cfg.WorkingDir = "."
 	}
 
+	fmt.Println("Приступаем к этапу анализа доступов.")
 	if err := checkLMStudioAvailable(); err != nil {
 		return fmt.Errorf("LM Studio недоступен: %w", err)
 	}
@@ -39,33 +36,41 @@ func RunOrchestrator(cfg domen.Config) error {
 		return fmt.Errorf("проблема с окружением Go или правами ФС: %w", err)
 	}
 
-	// основной цикл обработки задач
-	for i := 0; i < cfg.MaxTaskAttempts; i++ {
+	fmt.Println("Начинаем цикл обработки задач.")
+
+	processed := 0
+	for {
 		task, err := GetNewTask(cfg.TasksFilePath)
-		fmt.Printf("Получили задачу в тексте %d\n", task.Num)
 		if err != nil {
 			if errors.Is(err, errors.New("не найдено задач со статусом new")) {
-				return nil // все задачи обработаны
+				fmt.Printf("Все задачи обработаны успешно. Обработано задач: %d\n", processed)
+				return nil
 			}
 			return fmt.Errorf("ошибка получения задачи: %w", err)
 		}
 
-		// меняем статус на run
+		fmt.Printf("Получили задачу в тексте %d\n", task.Num)
+		fmt.Println("Меняем статус на run.")
+
 		if err := UpdateTaskStatus(cfg.TasksFilePath, task.Num, domen.StatusRun); err != nil {
 			return fmt.Errorf("не удалось обновить статус run: %w", err)
 		}
 
+		fmt.Println("Приступаем к Process task:")
 		if err := processTask(task, cfg); err != nil {
 			_ = UpdateTaskStatus(cfg.TasksFilePath, task.Num, domen.StatusError)
-			return fmt.Errorf("обработка задачи %d завершилась ошибкой: %w", task.Num, err)
+			fmt.Printf("Задача %d завершилась ошибкой: %v\n", task.Num, err)
+			// Продолжаем обработку следующих задач, не выходим!
+			continue
 		}
 
-		// успешно
+		fmt.Println("Меняем статус на ok.")
 		if err := UpdateTaskStatus(cfg.TasksFilePath, task.Num, domen.StatusOK); err != nil {
 			return fmt.Errorf("не удалось обновить статус ok: %w", err)
 		}
+
+		processed++
 	}
-	return nil
 }
 
 // checkLMStudioAvailable проверяет доступность LM Studio простым запросом.
@@ -88,48 +93,53 @@ func checkGoAndFSAccess() error {
 	return os.RemoveAll("tmp")
 }
 
-// processTask выполняет полный цикл для одной задачи:
-// 1. Получение команд от LM Studio
-// 2. Выполнение команд
-// 3. Цикл исправления компиляции (до MaxCompileFixAttempts)
-// 4. Генерация тестов
-// 5. Компиляция тестов с исправлениями
+// processTask выполняет полный цикл для одной задачи
 func processTask(task domen.Task, cfg domen.Config) error {
-	//fmt.Printf("Отправляем структуру task в llm: %s\n", task)
-	// 1-2. Получаем и выполняем команды решения
+	fmt.Println("Отправляем структуру task в llm.")
+
+	// 1. Основной код + тесты
 	commands, err := SendTaskToLLM(task)
 	if err != nil {
 		return fmt.Errorf("ошибка получения решения от LM Studio: %w", err)
 	}
+	fmt.Println("Начинаем выполнять полученные команды:")
 	for _, cmd := range commands {
 		if _, execErr := ExecuteCommand(cmd); execErr != nil {
 			return fmt.Errorf("ошибка выполнения команды: %w", execErr)
 		}
 	}
 
-	// 3. Цикл исправления компиляции
+	// 2. Цикл исправления компиляции (с номером попытки)
 	for i := 0; i < cfg.MaxCompileFixAttempts; i++ {
 		compileLog, compileErr := Compile(".")
 		if compileErr == nil {
 			break
 		}
-		// отправляем ошибку и получаем исправления
-		fixResp, fixErr := SendCompilationError("main.go", compileLog)
+
+		fmt.Printf("Попытка исправления %d/%d...\n", i+1, cfg.MaxCompileFixAttempts)
+
+		fixResp, fixErr := SendCompilationError(
+			"tasks/task_"+strconv.Itoa(task.Num)+"/main.go",
+			compileLog,
+			i+1, // ← передаём номер попытки
+		)
 		if fixErr != nil {
-			return fmt.Errorf("ошибка отправки лога компиляции: %w", fixErr)
+			fmt.Println("Не удалось отправить ошибку компиляции")
+			break
 		}
+
 		fixCommands, parseErr := ParseCommands(fixResp)
 		if parseErr != nil {
-			return fmt.Errorf("ошибка парсинга исправлений: %w", parseErr)
+			fmt.Println("Не удалось распарсить исправления")
+			break
 		}
+
 		for _, cmd := range fixCommands {
-			if _, execErr := ExecuteCommand(cmd); execErr != nil {
-				return fmt.Errorf("ошибка применения исправления: %w", execErr)
-			}
+			ExecuteCommand(cmd)
 		}
 	}
 
-	// 4. Генерация тестов (отдельный промпт)
+	// 3. Генерация тестов
 	testCommands, testErr := generateTests(task)
 	if testErr != nil {
 		return fmt.Errorf("ошибка генерации тестов: %w", testErr)
@@ -140,14 +150,14 @@ func processTask(task domen.Task, cfg domen.Config) error {
 		}
 	}
 
-	// 5. Цикл компиляции тестов
+	// 4. Компиляция тестов
 	for i := 0; i < cfg.MaxTestAttempts; i++ {
 		_, testCompileErr := Compile(".")
 		if testCompileErr == nil {
-			return nil
+			return nil // всё успешно
 		}
-		// повторяем исправление для тестов
-		testFixResp, _ := SendCompilationError("_test.go", "ошибка компиляции тестов")
+		// исправление тестов (можно тоже через SendCompilationError, но пока оставляем как было)
+		testFixResp, _ := SendCompilationError("_test.go", "ошибка компиляции тестов", 1)
 		testFixCmds, _ := ParseCommands(testFixResp)
 		for _, cmd := range testFixCmds {
 			ExecuteCommand(cmd)

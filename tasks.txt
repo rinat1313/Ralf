@@ -1,29 +1,69 @@
 начало задачи:
 номер задачи:1
-описание задачи:Напишите функцию, которая принимает имя пользователя и возвращает приветственное сообщение.
-важные моменты:Имя может быть пустым, в таком случае следует вернуть "Hello, World!".
-ожидаемый результат:Функция должна корректно обрабатывать пустую строку и возвращать строку с приветствием.
-тестовые данные:вход: "Alice" -> выход: "Hello, Alice!"; вход: "" -> выход: "Hello, World!"
-сигнатура функции:func Greeting(name string) string
-статус выполнения:new
+описание задачи:Initialize the Go module and create the basic project structure.
+важные моменты:Project name must be telegram-notifier. Use Go 1.21 or higher. No additional files except main.go initially.
+ожидаемый результат:go.mod file created with module telegram-notifier.
+тестовые данные:Run 'go mod init telegram-notifier'; file go.mod must exist and contain 'module telegram-notifier'.
+сигнатура функции:N/A
+статус выполнения:ok
 конец задачи.
 
 начало задачи:
 номер задачи:2
-описание задачи:Реализуйте функцию, которая принимает два целых числа и возвращает их сумму.
-важные моменты:Учесть возможное переполнение? Для простоты считаем, что числа в пределах int.
-ожидаемый результат:Возврат суммы двух чисел.
-тестовые данные:вход: 3, 5 -> выход: 8; вход: -2, 7 -> выход: 5
-сигнатура функции:func Add(a, b int) int
-статус выполнения:new
+описание задачи:Add the Telegram Bot API library as a dependency.
+важные моменты:Use the most popular and maintained library: github.com/go-telegram-bot-api/telegram-bot-api/v5.
+ожидаемый результат:Dependency added to go.mod and go.sum without errors.
+тестовые данные:Execute 'go get github.com/go-telegram-bot-api/telegram-bot-api/v5'; go.mod must contain the library version.
+сигнатура функции:N/A
+статус выполнения:ok
 конец задачи.
 
 начало задачи:
 номер задачи:3
-описание задачи:Создайте функцию, которая определяет, является ли целое число чётным.
-важные моменты:Использовать оператор остатка от деления. Функция должна возвращать булево значение.
-ожидаемый результат:true, если число чётное, иначе false.
-тестовые данные:вход: 4 -> выход: true; вход: 7 -> выход: false
-сигнатура функции:func IsEven(n int) bool
-статус выполнения:new
+описание задачи:Define the Config struct to hold bot configuration.
+важные моменты:Struct must contain BotToken (string) and ChatID (int64). All fields exported.
+ожидаемый результат:Config type ready for environment loading.
+тестовые данные:Struct literal with valid values compiles without errors.
+сигнатура функции:type Config struct
+статус выполнения:error
+конец задачи.
+
+начало задачи:
+номер задачи:4
+описание задачи:Implement loadConfig function to read BOT_TOKEN and CHAT_ID from environment variables.
+важные моменты:Validate that both variables are set. Return meaningful errors for missing or invalid values. Use strconv for ChatID parsing.
+ожидаемый результат:Function returns valid Config or error.
+тестовые данные:Valid env -> Config; empty BOT_TOKEN -> error "BOT_TOKEN environment variable is required"; invalid CHAT_ID -> parse error.
+сигнатура функции:func loadConfig() (Config, error)
+статус выполнения:ok
+конец задачи.
+
+начало задачи:
+номер задачи:5
+описание задачи:Implement sendCompletionMessage function to initialize the bot and send "Tasks completed".
+важные моменты:Use tgbotapi.NewBotAPI and NewMessage. Handle all possible API errors.
+ожидаемый результат:Message sent to the specified chat ID or error returned.
+тестовые данные:Valid token and chat -> success; invalid token -> bot creation error; invalid chat ID -> send error.
+сигнатура функции:func sendCompletionMessage(cfg Config) error
+статус выполнения:error
+конец задачи.
+
+начало задачи:
+номер задачи:6
+описание задачи:Implement the main function to orchestrate config loading and message sending.
+важные моменты:Use log.Fatal for any error. Print success message on completion. Follow Clean Code principles.
+ожидаемый результат:Bot starts on program execution (the triggering event) and sends the notification.
+тестовые данные:Correct env -> "Success: notification has been sent"; missing env -> fatal config error.
+сигнатура функции:func main()
+статус выполнения:error
+конец задачи.
+
+начало задачи:
+номер задачи:7
+описание задачи:Add comprehensive error handling and logging throughout the application.
+важные моменты:Wrap all errors with fmt.Errorf. No panics. All logs in English.
+ожидаемый результат:Application never crashes silently; clear error messages for all edge cases.
+тестовые данные:Network failure, invalid token, missing env vars — all produce descriptive fatal logs.
+сигнатура функции:N/A (refactoring task)
+статус выполнения:error
 конец задачи.

@@ -13,12 +13,13 @@ import (
 
 // ExecuteCommand выполняет переданную команду.
 func ExecuteCommand(cmd domen.Command) (string, error) {
+	fmt.Println("Выбираем тип команды:")
 	switch cmd.Type {
 	case "создание":
 		return "", executeCreate(cmd)
 	case "удаление":
 		return "", executeDelete(cmd)
-	case "внесение изменений":
+	case "внесение изменений", "изменение", "edit", "изменить": // ← добавляем синонимы
 		return "", executeEdit(cmd)
 	case "добавление строк":
 		return "", executeAddLines(cmd)
@@ -64,6 +65,7 @@ func writeLines(path string, lines []string) error {
 }
 
 func executeCreate(cmd domen.Command) error {
+	fmt.Println("Команда создания файла.")
 	if fileExists(cmd.Path) {
 		return fmt.Errorf("файл уже существует: %s", cmd.Path)
 	}
@@ -79,6 +81,7 @@ func executeCreate(cmd domen.Command) error {
 }
 
 func executeDelete(cmd domen.Command) error {
+	fmt.Println("Команда удаления файла.")
 	if !fileExists(cmd.Path) {
 		return fmt.Errorf("файл не существует: %s", cmd.Path)
 	}
@@ -89,27 +92,38 @@ func executeEdit(cmd domen.Command) error {
 	if !fileExists(cmd.Path) {
 		return fmt.Errorf("файл не существует: %s", cmd.Path)
 	}
-	if len(cmd.Lines) == 0 {
-		return errors.New("нет строк для изменения")
+
+	// Если LLM прислал полный Content — просто перезаписываем файл (это самое надёжное)
+	if cmd.Content != "" {
+		return os.WriteFile(cmd.Path, []byte(cmd.Content), 0644)
 	}
+
+	// Если Content пустой — работаем по старому режиму (точечное изменение строк)
+	if len(cmd.Lines) == 0 {
+		return errors.New("нет данных для изменения (ни Content, ни Lines)")
+	}
+
 	lines, err := readLines(cmd.Path)
 	if err != nil {
 		return fmt.Errorf("не удалось прочитать файл %s: %w", cmd.Path, err)
 	}
+
 	for lineNumStr, newText := range cmd.Lines {
 		lineNum, err := strconv.Atoi(lineNumStr)
 		if err != nil {
-			return fmt.Errorf("некорректный номер строки %q: %w", lineNumStr, err)
+			return fmt.Errorf("некорректный номер строки %q", lineNumStr)
 		}
 		if lineNum < 1 || lineNum > len(lines) {
-			return fmt.Errorf("строка %d не существует в файле %s (всего строк: %d)", lineNum, cmd.Path, len(lines))
+			return fmt.Errorf("строка %d не существует в файле %s", lineNum, cmd.Path)
 		}
 		lines[lineNum-1] = newText
 	}
+
 	return writeLines(cmd.Path, lines)
 }
 
 func executeAddLines(cmd domen.Command) error {
+	fmt.Println("Команда добавления текста по линиям в файл.")
 	if !fileExists(cmd.Path) {
 		return fmt.Errorf("файл не существует: %s", cmd.Path)
 	}
@@ -145,6 +159,7 @@ func executeAddLines(cmd domen.Command) error {
 }
 
 func executeDeleteLines(cmd domen.Command) error {
+	fmt.Println("Команда удаления строк из файла.")
 	if !fileExists(cmd.Path) {
 		return fmt.Errorf("файл не существует: %s", cmd.Path)
 	}
@@ -175,6 +190,7 @@ func executeDeleteLines(cmd domen.Command) error {
 }
 
 func executeCopy(cmd domen.Command) error {
+	fmt.Println("Команда копирования файла.")
 	if cmd.SrcPath == "" || cmd.DstPath == "" {
 		return errors.New("не указаны пути для копирования")
 	}
@@ -197,6 +213,7 @@ func executeCopy(cmd domen.Command) error {
 }
 
 func executeMove(cmd domen.Command) error {
+	fmt.Println("Команда перемещения файла.")
 	if cmd.SrcPath == "" || cmd.DstPath == "" {
 		return errors.New("не указаны пути для перемещения")
 	}
@@ -215,6 +232,7 @@ func executeMove(cmd domen.Command) error {
 }
 
 func executeRead(cmd domen.Command) (string, error) {
+	fmt.Println("Команда чтения из файла.")
 	if !fileExists(cmd.Path) {
 		return "", fmt.Errorf("файл не существует: %s", cmd.Path)
 	}
@@ -226,6 +244,7 @@ func executeRead(cmd domen.Command) (string, error) {
 }
 
 func executeCompile(cmd domen.Command) (string, error) {
+	fmt.Println("Команда компиляции файла.")
 	if !fileExists(cmd.Path) {
 		return "", fmt.Errorf("файл не существует: %s", cmd.Path)
 	}

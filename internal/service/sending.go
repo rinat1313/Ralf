@@ -12,38 +12,37 @@ import (
 	"Ralf/domen"
 )
 
-const StrictCommandTemplate = `Ты — эксперт-программист Go с 5-летним опытом.
+const StrictCommandTemplate = `Ты — эксперт-программист Go.
 
-ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ №1: ВСЕ пути к файлам ДОЛЖНЫ начинаться с tasks/task_<номер задачи>/
-Примеры правильных путей:
-- tasks/task_1/main.go
-- tasks/task_1/greeting_test.go
-- tasks/task_2/add.go
-- tasks/task_3/is_even_test.go
+Твоя ЕДИНСТВЕННАЯ задача — выполнять задачу и возвращать ТОЛЬКО валидный JSON-массив объектов.
 
-Никогда не используй пути без tasks/task_N/ в начале — это критическая ошибка!
+ОБЯЗАТЕЛЬНО: Используй ТОЧНО такие значения в поле "Type" — без сокращений, без синонимов:
+- "создание" (не "create", не "создать")
+- "удаление" (не "delete", не "удалить")
+- "внесение изменений" (не "изменение", не "edit", не "изменить")
+- "добавление строк" (не "add lines")
+- "удаление строк" (не "delete lines")
+- "копирование" (не "copy")
+- "перемещение" (не "move")
+- "чтение" (не "read")
+- "компиляция" (не "compile")
 
-Твоя ЕДИНСТВЕННАЯ задача — выполнять полученную задачу и вернуть ТОЛЬКО валидный JSON-массив.
-Важно: Все файлы — внутри tasks/task_<N>/, где N — номер текущей задачи.
-ПРАВИЛО №1: Ответ — строго JSON-массив объектов. Никакого текста до или после.
-ПРАВИЛО №2: Запрещено: markdown, json, объяснения, любые комментарии.
-ПРАВИЛО №3: Пример ответа (все пути начинаются с tasks/task_N/):
+Пример правильного поля Type:
+"Type": "внесение изменений"   ← именно так, полностью
+
+ВАЖНЕЙШЕЕ ТРЕБОВАНИЕ №1: ВСЕ пути начинаются с tasks/task_<номер задачи>/
+Примеры: tasks/task_1/main.go, tasks/task_1/greeting_test.go
+
+ПРАВИЛО №1: Ответ — ТОЛЬКО JSON-массив. Никакого текста, markdown, ±json.
+ПРАВИЛО №2: Пример ответа:
 
 [
 {
 "Type": "создание",
 "Path": "tasks/task_1/main.go",
 "Content": "package main\\n\\nimport \\"fmt\\"\\n\\nfunc Greeting(name string) string {\\n\\tif name == \\"\\" {\\n\\t\\treturn \\"Hello, World!\\"\\n\\t}\\n\\treturn \\"Hello, \\" + name + \\"!\\"\\n}"
-},
-{
-"Type": "создание",
-"Path": "tasks/task_1/greeting_test.go",
-"Content": "package main_test\\n\\nimport (\\"testing\\")\\n\\nfunc TestGreeting(t *testing.T) {\\n\\t// тесты здесь\\n}"
 }
 ]
-
-ПРАВИЛО №4: Используй только поля: "Type", "Path", "Content", "Lines", "SrcPath", "DstPath".
-ПРАВИЛО №5: "Lines" — объект с ключами-строками (номера строк).
 
 Выполни задачу и верни ТОЛЬКО JSON-массив.`
 
@@ -102,12 +101,12 @@ func (c *LLMClient) sendTask(task domen.Task) ([]domen.Command, error) {
 		"max_tokens":  16384,
 		"stream":      false,
 	}
-
+	fmt.Println("Начинаем процесс маршалирование запроса от llm.")
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось маршалировать запрос: %w", err)
 	}
-
+	fmt.Println("Начинаем процесс соединения с LM Studio.")
 	resp, err := c.HTTPClient.Post(c.BaseURL+"/chat/completions", "application/json", bytes.NewReader(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("ошибка соединения с LM Studio: %w", err)
@@ -126,7 +125,7 @@ func (c *LLMClient) sendTask(task domen.Task) ([]domen.Command, error) {
 			} `json:"message"`
 		} `json:"choices"`
 	}
-
+	fmt.Println("Начинаем парсинг JSON ответа.")
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
 		return nil, fmt.Errorf("ошибка парсинга JSON ответа: %w", err)
 	}
@@ -134,7 +133,7 @@ func (c *LLMClient) sendTask(task domen.Task) ([]domen.Command, error) {
 	if len(apiResp.Choices) == 0 || apiResp.Choices[0].Message.Content == "" {
 		return nil, errors.New("LM Studio вернул пустой ответ")
 	}
-
+	fmt.Println("Начинаем процесс парсинга команд:")
 	llmOutput := apiResp.Choices[0].Message.Content
 	return ParseCommands(llmOutput)
 }
